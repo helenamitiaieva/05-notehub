@@ -1,78 +1,75 @@
 import { Formik, Form, Field, ErrorMessage } from 'formik';
 import * as Yup from 'yup';
 import css from './NoteForm.module.css';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createNote } from '../../services/noteService';
-import type { Note } from '../../types/note';
-import axios from 'axios';
+import type { NoteTag } from '../../types/note';
+
+export interface NoteFormProps {
+  onClose: () => void;
+  onCreated?: () => void; 
+}
 
 type FormValues = {
   title: string;
-  body: string;   
-  tag: Note['tag'];
+  content: string;
+  tag: NoteTag;
 };
 
 const Schema = Yup.object({
   title: Yup.string().min(3, 'Min 3').max(50, 'Max 50').required('Required'),
-  body: Yup.string().max(500, 'Max 500'),
-  tag: Yup.mixed<Note['tag']>().oneOf([
-    'Todo', 'Work', 'Personal', 'Meeting', 'Shopping',
-  ]).required('Required'),
+  content: Yup.string().max(500, 'Max 500'),
+  tag: Yup.mixed<NoteTag>()
+    .oneOf(['Todo', 'Work', 'Personal', 'Meeting', 'Shopping'])
+    .required('Required'),
 });
 
-export default function NoteForm({
-  onClose,
-  onCreated,
-}: {
-  onClose: () => void;
-  onCreated?: () => void;
-}) {
-  const initialValues: FormValues = { title: '', body: '', tag: 'Todo' };
+export default function NoteForm({ onClose, onCreated }: NoteFormProps) {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: createNote, 
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notes'] });
+      onCreated?.();
+      onClose();
+    },
+    onError: (err: unknown) => {
+      const message = err instanceof Error ? err.message : 'Error';
+      alert(message);
+    },
+  });
+
+  const initialValues: FormValues = { title: '', content: '', tag: 'Todo' };
 
   return (
     <Formik<FormValues>
       initialValues={initialValues}
       validationSchema={Schema}
-      onSubmit={async (values, { setSubmitting, resetForm }) => {
-  try {
-    await createNote(values);
-    resetForm();
-    onCreated?.();
-    onClose();
-  } catch (err: unknown) {
-    let msg = 'Error';
-    if (axios.isAxiosError(err)) {
-      msg =
-        (typeof err.response?.data === 'string' && err.response?.data) ||
-        err.response?.statusText ||
-        err.message;
-    } else if (err instanceof Error) {
-      msg = err.message;
-    }
-    alert(msg);
-  } finally {
-    setSubmitting(false);
-  }
-}}
+      onSubmit={(values, helpers) => {
+        mutation.mutate(values, {
+          onSettled: () => helpers.setSubmitting(false),
+        });
+      }}
     >
       {({ isSubmitting, isValid }) => (
         <Form className={css.form}>
           <div className={css.formGroup}>
             <label htmlFor="title">Title</label>
             <Field id="title" type="text" name="title" className={css.input} />
-              <ErrorMessage name="title" />
+            <ErrorMessage name="title" component="span" className={css.error} />
           </div>
 
           <div className={css.formGroup}>
-            <label htmlFor="body">Content</label>
+            <label htmlFor="content">Content</label>
             <Field
               as="textarea"
-              id="body"
-              name="body"
+              id="content"
+              name="content"
               rows={8}
               className={css.textarea}
             />
-           
-              <ErrorMessage name="body" />
+            <ErrorMessage name="content" component="span" className={css.error} />
           </div>
 
           <div className={css.formGroup}>
@@ -84,7 +81,7 @@ export default function NoteForm({
               <option value="Meeting">Meeting</option>
               <option value="Shopping">Shopping</option>
             </Field>
-              <ErrorMessage name="tag" />
+            <ErrorMessage name="tag" component="span" className={css.error} />
           </div>
 
           <div className={css.actions}>

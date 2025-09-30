@@ -1,13 +1,17 @@
 import ReactPaginate from 'react-paginate';
 import css from './Pagination.module.css';
 
+export interface PaginationProps {
+  pageCount: number;             
+  currentPage: number;    
+  onPageChange: (page: number) => void; 
+}
+
 export default function Pagination({
   pageCount,
+  currentPage,
   onPageChange,
-}: {
-  pageCount: number;
-  onPageChange: (page: number) => void;
-}) {
+}: PaginationProps) {
   if (pageCount <= 1) return null;
 
   return (
@@ -23,7 +27,8 @@ export default function Pagination({
       pageRangeDisplayed={3}
       marginPagesDisplayed={1}
       pageCount={pageCount}
-      onPageChange={(ev) => onPageChange(ev.selected + 1)} // selected с 0
+      forcePage={Math.max(0, (currentPage ?? 1) - 1)} // робимо контрольованим
+      onPageChange={(ev) => onPageChange(ev.selected + 1)} // ev.selected починається з 0
     />
   );
 }
