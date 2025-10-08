@@ -9,7 +9,7 @@ import NoteList from '../../components/NoteList/NoteList';
 import Modal from '../../components/Modal/Modal';
 import NoteForm from '../../components/NoteForm/NoteForm';
 
-import { fetchNotes, deleteNote } from '../../services/noteService';
+import { fetchNotes } from '../../services/noteService';
 import type { Note } from '../../types/note';
 
 export default function App() {
@@ -45,11 +45,6 @@ export default function App() {
     await refetch();
   };
 
-  const handleDelete = async (id: string): Promise<void> => {
-    await deleteNote(id);
-    await refetch();
-  };
-
   return (
     <div className={css.app}>
       <header className={css.toolbar}>
@@ -71,7 +66,12 @@ export default function App() {
       {isLoading && <p>Завантаження...</p>}
       {isError && <p>Помилка при завантаженні</p>}
 
-      {notes.length > 0 && <NoteList notes={notes} onDelete={handleDelete} />}
+      {notes.length > 0 && (
+       <NoteList 
+          notes={notes} 
+          queryKey={['notes', debouncedSearch, page]} 
+        />
+      )}
 
       {isModalOpen && (
         <Modal onClose={handleCloseModal}>
